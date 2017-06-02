@@ -1,7 +1,7 @@
-﻿自动处理极速验证码进行验证进入系统采集网站信息。 http://www.gsxt.gov.cn/index.html
+﻿自动处理极速验证码进行验证进入系统采集企业信用信息。 http://www.gsxt.gov.cn/index.html
 
 
-浙江工商信息采集
+企业信用信息采集
 自动滑动滑块验证
 
 
