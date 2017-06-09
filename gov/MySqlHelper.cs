@@ -154,16 +154,18 @@ namespace gov
         /// <returns></returns>
         public Dictionary<string, List<object>> GetSelectDicBySql(string sqlSelect)
         {
-            var mySqlConnection = GetMySqlConnection();
-            var mySqlCommand = GetMySqlCommand(sqlSelect, mySqlConnection);
+            using (var mySqlConnection = GetMySqlConnection())
+            {
+                using (var mySqlCommand = GetMySqlCommand(sqlSelect, mySqlConnection))
+                {
+                    mySqlConnection.Open();
+                    var dic = GetSelectDic(mySqlCommand);
+                    return dic;
+                }
+            }
+            
 
-            mySqlConnection.Open();
-
-            var dic = GetSelectDic(mySqlCommand);
-
-            mySqlConnection.Close();
-
-            return dic;
+            
         }
 
         /// <summary>
@@ -181,11 +183,14 @@ namespace gov
         /// <param name="sqlUpdate"></param>
         public void UpdateTable(string sqlUpdate)
         {
-            var mySqlConnection = GetMySqlConnection();
-            var mySqlCommand = GetMySqlCommand(sqlUpdate, mySqlConnection);
-            mySqlConnection.Open();
-            UpdateTable(mySqlCommand);
-            mySqlConnection.Close();
+            using (var mySqlConnection = GetMySqlConnection())
+            {
+                using (var mySqlCommand = GetMySqlCommand(sqlUpdate, mySqlConnection))
+                {
+                    mySqlConnection.Open();
+                    UpdateTable(mySqlCommand);
+                }
+            }
         }
 
         /// <summary>
@@ -203,11 +208,14 @@ namespace gov
         /// <param name="sqlDelete"></param>
         public void DeleteTable(string sqlDelete)
         {
-            var mySqlConnection = GetMySqlConnection();
-            var mySqlCommand = GetMySqlCommand(sqlDelete, mySqlConnection);
-            mySqlConnection.Open();
-            DeleteTable(mySqlCommand);
-            mySqlConnection.Close();
+            using (var mySqlConnection = GetMySqlConnection())
+            {
+                using (var mySqlCommand = GetMySqlCommand(sqlDelete, mySqlConnection))
+                {
+                    mySqlConnection.Open();
+                    DeleteTable(mySqlCommand);
+                }
+            }
         }
 
         /// <summary>
@@ -225,11 +233,14 @@ namespace gov
         /// <param name="sqlInsert"></param>
         public void InsertTable(string sqlInsert)
         {
-            var mySqlConnection = GetMySqlConnection();
-            var mySqlCommand = GetMySqlCommand(sqlInsert, mySqlConnection);
-            mySqlConnection.Open();
-            InsertTable(mySqlCommand);
-            mySqlConnection.Close();
+            using(var mySqlConnection = GetMySqlConnection())
+            {
+                using (var mySqlCommand = GetMySqlCommand(sqlInsert, mySqlConnection))
+                {
+                    mySqlConnection.Open();
+                    InsertTable(mySqlCommand);
+                }
+            }
         }
 
 
@@ -273,30 +284,29 @@ namespace gov
 
                 var str = $"{strPart1}{strPart2}";
 
-                var mySqlCommand = GetMySqlCommand(str, mySqlConnection);
-
-
-                foreach (var info in infoDic)
+                using (var mySqlCommand = GetMySqlCommand(str, mySqlConnection))
                 {
-                    //转义 SQL 语句中使用的字符串中的特殊字符
-                    //mysql_real_escape_string
-                    mySqlCommand.Parameters.AddWithValue($"@{info.Key}", info.Value);
-                }
 
-                switch (mySqlCommand.ExecuteNonQuery())
-                {
-                    case 1:
-                        Console.WriteLine($"向{tableName}表插入新记录成功！");
-                        break;
-                    case 0:
-                        throw new Exception($"向{tableName}表插入新记录失败！");
-                    default:
-                        throw new Exception($"向{tableName}表插入了多条新记录！");
+
+                    foreach (var info in infoDic)
+                    {
+                        //转义 SQL 语句中使用的字符串中的特殊字符
+                        //mysql_real_escape_string
+                        mySqlCommand.Parameters.AddWithValue($"@{info.Key}", info.Value);
+                    }
+
+                    switch (mySqlCommand.ExecuteNonQuery())
+                    {
+                        case 1:
+                            Console.WriteLine($"向{tableName}表插入新记录成功！");
+                            break;
+                        case 0:
+                            throw new Exception($"向{tableName}表插入新记录失败！");
+                        default:
+                            throw new Exception($"向{tableName}表插入了多条新记录！");
+                    }
                 }
-                //关闭连接
-                mySqlConnection.Close();
             }
-
         }
 
         /// <summary>
@@ -362,10 +372,6 @@ namespace gov
                                 throw new Exception($"向{tableName}表插入了多条新记录！");
                         }
                     }
-
-
-                    mySqlConnection.Close();
-
                 }
 
 
@@ -398,13 +404,15 @@ namespace gov
         public bool GetLock(MySqlConnection mySqlConnection, string lockName, int timeout = 50)
         {
             var sqlLock = $"SELECT GET_LOCK('{lockName}',{timeout});";
-            var mySqlCommandLock = GetMySqlCommand(sqlLock, mySqlConnection);
-            //mySqlConnection.Open();
-            var result = mySqlCommandLock.ExecuteScalar();
-            //mySqlConnection.Close();
-            //若成功得到锁，则返回 1，若操作超时则返回0 (例如,由于另一个客户端已提前封锁了这个名字 ),若发生错误则返回NULL (诸如缺乏记忆或线程mysqladmin kill 被断开 )
-            //0操作超时 1成功加锁 null失败
-            return result.ToString() == "1";
+            using (var mySqlCommandLock = GetMySqlCommand(sqlLock, mySqlConnection))
+            {
+                //mySqlConnection.Open();
+                var result = mySqlCommandLock.ExecuteScalar();
+                //mySqlConnection.Close();
+                //若成功得到锁，则返回 1，若操作超时则返回0 (例如,由于另一个客户端已提前封锁了这个名字 ),若发生错误则返回NULL (诸如缺乏记忆或线程mysqladmin kill 被断开 )
+                //0操作超时 1成功加锁 null失败
+                return result.ToString() == "1";
+            }
         }
 
 
@@ -417,19 +425,21 @@ namespace gov
         public bool GetReleaseLock(MySqlConnection mySqlConnection, string lockName)
         {
             var sqlUnLock = $"SELECT RELEASE_LOCK('{lockName}');";
-            var mySqlCommandReleaseLock = GetMySqlCommand(sqlUnLock, mySqlConnection);
-            //mySqlConnection.Open();
-            var result = mySqlCommandReleaseLock.ExecuteScalar();
-            //mySqlConnection.Close();
-
-            if (result.ToString() != "1")
+            using (var mySqlCommandReleaseLock = GetMySqlCommand(sqlUnLock, mySqlConnection))
             {
-                //解锁失败 继续解锁
-                Thread.Sleep(50 * 1000);
-                Console.WriteLine("解锁失败，休息50秒再解锁。");
-                return GetReleaseLock(mySqlConnection, lockName);
+                //mySqlConnection.Open();
+                var result = mySqlCommandReleaseLock.ExecuteScalar();
+                //mySqlConnection.Close();
+
+                if (result.ToString() != "1")
+                {
+                    //解锁失败 继续解锁
+                    Thread.Sleep(50*1000);
+                    Console.WriteLine("解锁失败，休息50秒再解锁。");
+                    return GetReleaseLock(mySqlConnection, lockName);
+                }
+                return true;
             }
-            return true;
         }
 
 
@@ -439,17 +449,19 @@ namespace gov
         public void Test()
         {
             //var mysqlHelper = new MysqlHelper("127.0.0.1", "zhanxian", "root", "root");
-            var mySqlHelper = new MySqlHelper();
-            var mySqlConnection = GetMySqlConnection();
+            //var mySqlHelper = new MySqlHelper();
             var sqlSelect = "SELECT company FROM jd";
-            var mySqlCommand = GetMySqlCommand(sqlSelect, mySqlConnection);
+            using (var mySqlConnection = GetMySqlConnection())
+            {
+                
+                using (var mySqlCommand = GetMySqlCommand(sqlSelect, mySqlConnection))
+                {
 
-            mySqlConnection.Open();
+                    mySqlConnection.Open();
 
-            var dic = GetSelectDic(mySqlCommand);
-
-            mySqlConnection.Close();
-
+                    var dic = GetSelectDic(mySqlCommand);
+                }
+            }
         }
 
         /// <summary>
@@ -463,7 +475,7 @@ namespace gov
             //var list = dic[keys.ElementAt(0)];
             //var dic1 = mySqlHelper.GetSelectDicBySql("SELECT * FROM renwu_gongshang_x315_attr");
 
-            var mySqlHelper = new MySqlHelper();
+            //var mySqlHelper = new MySqlHelper();
 
 
             //var mySqlConnection = GetMySqlConnection();
